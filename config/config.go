@@ -8,22 +8,23 @@ import (
 )
 
 type Config struct {
-	Port         string
-	GoogleClient string
-	GoogleSecret string
+	Port           string
+	GoogleClient   string
+	GoogleSecret   string
 	GoogleRedirect string
+	JWTSecret      string // Secreto para firmar los tokens JWT
 }
 
 func LoadConfig() *Config {
-	err := godotenv.Load()
-	if err != nil {
-		log.Fatal("Error loading .env file")
+	if err := godotenv.Load(); err != nil {
+		log.Println("No .env file found, using environment variables")
 	}
 
 	return &Config{
-		Port:         os.Getenv("PORT"),
-		GoogleClient: os.Getenv("GOOGLE_CLIENT_ID"),
-		GoogleSecret: os.Getenv("GOOGLE_CLIENT_SECRET"),
+		Port:           os.Getenv("PORT"),
+		GoogleClient:   os.Getenv("GOOGLE_CLIENT_ID"),
+		GoogleSecret:   os.Getenv("GOOGLE_CLIENT_SECRET"),
 		GoogleRedirect: os.Getenv("GOOGLE_REDIRECT_URL"),
+		JWTSecret:      os.Getenv("JWT_SECRET"),
 	}
 }

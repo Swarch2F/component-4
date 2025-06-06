@@ -1,26 +1,63 @@
-# Binaries for programs and plugins
+# Binarios compilados
 *.exe
 *.exe~
 *.dll
 *.so
 *.dylib
 
-# Test binary, built with `go test -c`
+# Nombre del ejecutable (si tienes uno específico, ajústalo)
+component-4
+app
+main
+
+# Directorio de salida de la compilación (si usas uno)
+/bin/
+/build/
+
+# Archivos de test
 *.test
 
-# Output of the go coverage tool, specifically when used with LiteIDE
+# Archivos de cobertura
 *.out
+coverage.txt
+profile.out
 
-# Dependency directories (remove the comment below to include it)
-# vendor/
+# Archivos de dependencias (Go Modules maneja esto, pero por si acaso)
+/vendor/
 
-# Environment configuration files
-*.env
+# Archivos de entorno - ¡IMPORTANTE para no subir secretos!
+.env
 .env.*
-!.env.example
+!/.env.example # A menudo se versiona un ejemplo
 
-# IDE-specific files
+# Logs
+*.log
+logs/
+
+# Archivos de configuración de IDEs
 .idea/
 .vscode/
-*.swp
+*.iml
+*.ipr
+*.iws
+nbproject/
+
+# Archivos del sistema operativo
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Archivos temporales de editores
 *~
+*.swp
+*.swo
+
+# Archivos de Swagger/OpenAPI generados (si no quieres versionarlos)
+# /docs/ # Descomenta si la carpeta 'docs' generada por swag no debe ser versionada
+
+# PostgreSQL (si tienes archivos locales que no deben ser versionados)
+# pg_dump files
+*.sql
+*.dump
+# pgAdmin session files or logs (si aplica)

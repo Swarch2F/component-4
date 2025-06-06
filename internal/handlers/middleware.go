@@ -1,43 +1,43 @@
 package handlers
 
 import (
+	"component-4/internal/auth"
+	"context"
 	"net/http"
 	"strings"
 )
 
-// AuthMiddleware verifica si el usuario está autenticado.
-func AuthMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Aquí se debe implementar la lógica para verificar la autenticación del usuario.
-		// Por ejemplo, se puede verificar un token en las cabeceras de la solicitud.
+// ContextKey es un tipo personalizado para usar como clave en el contexto.
+type ContextKey string
 
-		// Si el usuario no está autenticado, se puede devolver un error 401.
-		if !isAuthenticated(r) {
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
-			return
-		}
+const UserIDKey ContextKey = "userID"
 
-		// Si el usuario está autenticado, se llama al siguiente manejador.
-		next.ServeHTTP(w, r)
-	})
-}
+// AuthMiddleware protege las rutas verificando un token JWT.
+func AuthMiddleware(jwtSecret string) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			authHeader := r.Header.Get("Authorization")
+			if authHeader == "" {
+				http.Error(w, "Authorization header required", http.StatusUnauthorized)
+				return
+			}
 
-// isAuthenticated es una función auxiliar que verifica si el usuario está autenticado.
-func isAuthenticated(r *http.Request) bool {
-	// Aquí se debe implementar la lógica para verificar la autenticación.
-	// Por ejemplo, se puede comprobar si hay un token en las cabeceras.
-	authHeader := r.Header.Get("Authorization")
-	if strings.HasPrefix(authHeader, "Bearer ") {
-		token := strings.TrimPrefix(authHeader, "Bearer ")
-		// Aquí se debe validar el token.
-		return validateToken(token)
+			parts := strings.Split(authHeader, " ")
+			if len(parts) != 2 || strings.ToLower(parts[0]) != "bearer" {
+				http.Error(w, "Authorization header format must be Bearer {token}", http.StatusUnauthorized)
+				return
+			}
+
+			tokenString := parts[1]
+			userID, err := auth.ValidateToken(tokenString, jwtSecret)
+			if err != nil {
+				http.Error(w, "Invalid token", http.StatusUnauthorized)
+				return
+			}
+
+			// Pasa el userID al siguiente handler a través del contexto.
+			ctx := context.WithValue(r.Context(), UserIDKey, userID)
+			next.ServeHTTP(w, r.WithContext(ctx))
+		})
 	}
-	return false
-}
-
-// validateToken es una función que valida el token de autenticación.
-func validateToken(token string) bool {
-	// Implementar la lógica de validación del token.
-	// Esto puede incluir la verificación de la firma del token y su expiración.
-	return true // Cambiar esto según la lógica de validación real.
 }

@@ -1,0 +1,280 @@
+basePath: /
+definitions:
+  handlers.ErrorResponse:
+    properties:
+      error:
+        example: Ocurrió un error
+        type: string
+    type: object
+  handlers.GoogleLinkAccountNeededResponse:
+    properties:
+      action_required:
+        example: link_account
+        type: string
+      error:
+        example: Ya existe una cuenta con este email. Por favor, inicia sesión con
+          tu contraseña para vincular tu cuenta de Google.
+        type: string
+    type: object
+  handlers.LinkGoogleAccountRequest:
+    properties:
+      email:
+        example: test@example.com
+        type: string
+      google_auth_code:
+        description: Código de autorización de Google de ejemplo
+        example: 4/0AY0e-g7...
+        type: string
+      password:
+        example: password123
+        type: string
+    type: object
+  handlers.LoginNativeRequest:
+    properties:
+      email:
+        example: test@example.com
+        type: string
+      password:
+        example: password123
+        type: string
+    type: object
+  handlers.LoginOAuthNeededResponse:
+    properties:
+      error:
+        example: Te registraste usando Google. Por favor, inicia sesión con Google
+          o crea una contraseña para tu cuenta.
+        type: string
+      use_oauth:
+        example: "true"
+        type: string
+    type: object
+  handlers.MessageResponse:
+    properties:
+      message:
+        example: Operación exitosa
+        type: string
+    type: object
+  handlers.ProtectedResponse:
+    properties:
+      message:
+        example: Esta es una ruta protegida
+        type: string
+      user_id:
+        example: some-user-id
+        type: string
+    type: object
+  handlers.RegisterNativeRequest:
+    properties:
+      email:
+        example: test@example.com
+        type: string
+      password:
+        example: password123
+        type: string
+    type: object
+  handlers.TokenResponse:
+    properties:
+      token:
+        example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+        type: string
+    type: object
+host: localhost:8080
+info:
+  contact:
+    email: support@swagger.io
+    name: Soporte API
+    url: http://www.swagger.io/support
+  description: |-
+    Esta es la documentación del servidor para un sistema de autenticación híbrido (Nativo + Google OAuth), el cual incluye registro, inicio de sesión, autenticación y vinculación de cuentas de Google.\n
+    El sistema permite a los usuarios registrarse y autenticarse utilizando credenciales nativas, así como iniciar sesión con Google OAuth. Además, los usuarios pueden vincular sus cuentas de Google a su cuenta nativa para una experiencia de inicio de sesión unificada.\n
+    En resumen, cubre todos los casos de uso de autenticación híbrida.\n
+
+    **IMPORTANTE:**\n
+    - Los endpoints de autenticación con Google (como `/auth/google/login`) realizan redirecciones a Google o usan su API y **no pueden ser probados directamente desde Swagger UI**. Para probar el flujo OAuth, abre la ruta en tu navegador.\n
+    - Cuando inicies sesión exitosamente (Ya sea con login nativo o con Google), recibirás un token JWT. Para acceder a rutas protegidas desde Swagger UI, haz clic en el botón "Authorize" y escribe: `Bearer [TOKEN]` (sin los corchetes, dejando un espacio después de "Bearer").\n
+    - Si tienes dudas sobre el uso de los endpoints, revisa las descripciones individuales o contacta al soporte.
+  license:
+    name: Licencia Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  termsOfService: http://swagger.io/terms/
+  title: API de autenticación híbrida
+  version: "1.1"
+paths:
+  /api/profile:
+    get:
+      description: Ejemplo de una ruta que requiere autenticación JWT.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Acceso concedido.
+          schema:
+            $ref: '#/definitions/handlers.ProtectedResponse'
+        "401":
+          description: No autorizado.
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Acceder a una ruta protegida
+      tags:
+      - protected
+  /auth/google/callback:
+    get:
+      description: Procesa el callback de Google después de la autenticación del usuario.
+        Crea un nuevo usuario o inicia sesión en un usuario existente, devolviendo
+        un token JWT.
+      parameters:
+      - description: Código de autorización de Google
+        in: query
+        name: code
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Autenticación exitosa, token devuelto.
+          schema:
+            $ref: '#/definitions/handlers.TokenResponse'
+        "400":
+          description: Código no encontrado en el callback.
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "409":
+          description: La cuenta ya existe, necesita vinculación.
+          schema:
+            $ref: '#/definitions/handlers.GoogleLinkAccountNeededResponse'
+        "500":
+          description: Fallo al obtener información del usuario de Google o al crear/generar
+            token.
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: Manejar el callback de Google OAuth2
+      tags:
+      - auth
+  /auth/google/link:
+    post:
+      consumes:
+      - application/json
+      description: Verifica la contraseña del usuario y vincula su cuenta de Google
+        usando un código de autorización de Google.
+      parameters:
+      - description: Detalles para Vincular Cuenta
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.LinkGoogleAccountRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Cuenta de Google vinculada exitosamente.
+          schema:
+            $ref: '#/definitions/handlers.MessageResponse'
+        "400":
+          description: Solicitud inválida o el email de la cuenta de Google no coincide.
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: Contraseña inválida.
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Usuario no encontrado.
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Fallo al verificar con Google o al vincular la cuenta.
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: Vincular una cuenta de Google a una cuenta nativa existente
+      tags:
+      - auth
+  /auth/google/login:
+    get:
+      description: Redirige al usuario a la página de consentimiento de Google OAuth2.
+      responses:
+        "307":
+          description: Redirige a Google OAuth
+      summary: Iniciar sesión con Google OAuth2
+      tags:
+      - auth
+  /login:
+    post:
+      consumes:
+      - application/json
+      description: Autentica a un usuario y devuelve un token JWT si el inicio de
+        sesión es exitoso.
+      parameters:
+      - description: Inicio de Sesión de Usuario
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.LoginNativeRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Inicio de sesión exitoso, token devuelto
+          schema:
+            $ref: '#/definitions/handlers.TokenResponse'
+        "400":
+          description: Payload de solicitud inválido.
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: Usuario registrado con Google, debe usar el inicio de sesión
+            de Google.
+          schema:
+            $ref: '#/definitions/handlers.LoginOAuthNeededResponse'
+        "500":
+          description: No se pudo generar el token.
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: Iniciar sesión de un usuario con email y contraseña
+      tags:
+      - auth
+  /register:
+    post:
+      consumes:
+      - application/json
+      description: Crea una nueva cuenta de usuario utilizando su email y una contraseña
+        elegida.
+      parameters:
+      - description: Registro de Usuario
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.RegisterNativeRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Usuario registrado exitosamente.
+          schema:
+            $ref: '#/definitions/handlers.MessageResponse'
+        "400":
+          description: Payload de solicitud inválido.
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "409":
+          description: El usuario ya existe.
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: Registrar un nuevo usuario con email y contraseña
+      tags:
+      - auth
+schemes:
+- http
+securityDefinitions:
+  BearerAuth:
+    description: Escribe Bearer [TOKEN] (sin los corchetes, dejando un espacio después
+      de "Bearer") para acceder a las rutas protegidas
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

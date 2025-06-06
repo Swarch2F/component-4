@@ -1,0 +1,393 @@
+{
+    "schemes": [
+        "http"
+    ],
+    "swagger": "2.0",
+    "info": {
+        "description": "Esta es la documentación del servidor para un sistema de autenticación híbrido (Nativo + Google OAuth), el cual incluye registro, inicio de sesión, autenticación y vinculación de cuentas de Google.\\n\nEl sistema permite a los usuarios registrarse y autenticarse utilizando credenciales nativas, así como iniciar sesión con Google OAuth. Además, los usuarios pueden vincular sus cuentas de Google a su cuenta nativa para una experiencia de inicio de sesión unificada.\\n\nEn resumen, cubre todos los casos de uso de autenticación híbrida.\\n\n\n**IMPORTANTE:**\\n\n- Los endpoints de autenticación con Google (como `/auth/google/login`) realizan redirecciones a Google o usan su API y **no pueden ser probados directamente desde Swagger UI**. Para probar el flujo OAuth, abre la ruta en tu navegador.\\n\n- Cuando inicies sesión exitosamente (Ya sea con login nativo o con Google), recibirás un token JWT. Para acceder a rutas protegidas desde Swagger UI, haz clic en el botón \"Authorize\" y escribe: `Bearer [TOKEN]` (sin los corchetes, dejando un espacio después de \"Bearer\").\\n\n- Si tienes dudas sobre el uso de los endpoints, revisa las descripciones individuales o contacta al soporte.",
+        "title": "API de autenticación híbrida",
+        "termsOfService": "http://swagger.io/terms/",
+        "contact": {
+            "name": "Soporte API",
+            "url": "http://www.swagger.io/support",
+            "email": "support@swagger.io"
+        },
+        "license": {
+            "name": "Licencia Apache 2.0",
+            "url": "http://www.apache.org/licenses/LICENSE-2.0.html"
+        },
+        "version": "1.1"
+    },
+    "host": "localhost:8080",
+    "basePath": "/",
+    "paths": {
+        "/api/profile": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Ejemplo de una ruta que requiere autenticación JWT.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "protected"
+                ],
+                "summary": "Acceder a una ruta protegida",
+                "responses": {
+                    "200": {
+                        "description": "Acceso concedido.",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ProtectedResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado.",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/google/callback": {
+            "get": {
+                "description": "Procesa el callback de Google después de la autenticación del usuario. Crea un nuevo usuario o inicia sesión en un usuario existente, devolviendo un token JWT.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Manejar el callback de Google OAuth2",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Código de autorización de Google",
+                        "name": "code",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Autenticación exitosa, token devuelto.",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.TokenResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Código no encontrado en el callback.",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "La cuenta ya existe, necesita vinculación.",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.GoogleLinkAccountNeededResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Fallo al obtener información del usuario de Google o al crear/generar token.",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/google/link": {
+            "post": {
+                "description": "Verifica la contraseña del usuario y vincula su cuenta de Google usando un código de autorización de Google.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Vincular una cuenta de Google a una cuenta nativa existente",
+                "parameters": [
+                    {
+                        "description": "Detalles para Vincular Cuenta",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.LinkGoogleAccountRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Cuenta de Google vinculada exitosamente.",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.MessageResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Solicitud inválida o el email de la cuenta de Google no coincide.",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Contraseña inválida.",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Usuario no encontrado.",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Fallo al verificar con Google o al vincular la cuenta.",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/google/login": {
+            "get": {
+                "description": "Redirige al usuario a la página de consentimiento de Google OAuth2.",
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Iniciar sesión con Google OAuth2",
+                "responses": {
+                    "307": {
+                        "description": "Redirige a Google OAuth"
+                    }
+                }
+            }
+        },
+        "/login": {
+            "post": {
+                "description": "Autentica a un usuario y devuelve un token JWT si el inicio de sesión es exitoso.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Iniciar sesión de un usuario con email y contraseña",
+                "parameters": [
+                    {
+                        "description": "Inicio de Sesión de Usuario",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.LoginNativeRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Inicio de sesión exitoso, token devuelto",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.TokenResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Payload de solicitud inválido.",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Usuario registrado con Google, debe usar el inicio de sesión de Google.",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.LoginOAuthNeededResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "No se pudo generar el token.",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/register": {
+            "post": {
+                "description": "Crea una nueva cuenta de usuario utilizando su email y una contraseña elegida.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Registrar un nuevo usuario con email y contraseña",
+                "parameters": [
+                    {
+                        "description": "Registro de Usuario",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.RegisterNativeRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Usuario registrado exitosamente.",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.MessageResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Payload de solicitud inválido.",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "El usuario ya existe.",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "handlers.ErrorResponse": {
+            "type": "object",
+            "properties": {
+                "error": {
+                    "type": "string",
+                    "example": "Ocurrió un error"
+                }
+            }
+        },
+        "handlers.GoogleLinkAccountNeededResponse": {
+            "type": "object",
+            "properties": {
+                "action_required": {
+                    "type": "string",
+                    "example": "link_account"
+                },
+                "error": {
+                    "type": "string",
+                    "example": "Ya existe una cuenta con este email. Por favor, inicia sesión con tu contraseña para vincular tu cuenta de Google."
+                }
+            }
+        },
+        "handlers.LinkGoogleAccountRequest": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string",
+                    "example": "test@example.com"
+                },
+                "google_auth_code": {
+                    "description": "Código de autorización de Google de ejemplo",
+                    "type": "string",
+                    "example": "4/0AY0e-g7..."
+                },
+                "password": {
+                    "type": "string",
+                    "example": "password123"
+                }
+            }
+        },
+        "handlers.LoginNativeRequest": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string",
+                    "example": "test@example.com"
+                },
+                "password": {
+                    "type": "string",
+                    "example": "password123"
+                }
+            }
+        },
+        "handlers.LoginOAuthNeededResponse": {
+            "type": "object",
+            "properties": {
+                "error": {
+                    "type": "string",
+                    "example": "Te registraste usando Google. Por favor, inicia sesión con Google o crea una contraseña para tu cuenta."
+                },
+                "use_oauth": {
+                    "type": "string",
+                    "example": "true"
+                }
+            }
+        },
+        "handlers.MessageResponse": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string",
+                    "example": "Operación exitosa"
+                }
+            }
+        },
+        "handlers.ProtectedResponse": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string",
+                    "example": "Esta es una ruta protegida"
+                },
+                "user_id": {
+                    "type": "string",
+                    "example": "some-user-id"
+                }
+            }
+        },
+        "handlers.RegisterNativeRequest": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string",
+                    "example": "test@example.com"
+                },
+                "password": {
+                    "type": "string",
+                    "example": "password123"
+                }
+            }
+        },
+        "handlers.TokenResponse": {
+            "type": "object",
+            "properties": {
+                "token": {
+                    "type": "string",
+                    "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                }
+            }
+        }
+    },
+    "securityDefinitions": {
+        "BearerAuth": {
+            "description": "Escribe Bearer [TOKEN] (sin los corchetes, dejando un espacio después de \"Bearer\") para acceder a las rutas protegidas",
+            "type": "apiKey",
+            "name": "Authorization",
+            "in": "header"
+        }
+    }
+}
