@@ -92,7 +92,7 @@ func (h *AuthHandler) writeJSON(w http.ResponseWriter, status int, data interfac
 // @Success 201 {object} MessageResponse "Usuario registrado exitosamente."
 // @Failure 400 {object} ErrorResponse "Payload de solicitud inválido."
 // @Failure 409 {object} ErrorResponse "El usuario ya existe."
-// @Router /register [post]
+// @Router /api/v1/register [post]
 // RegisterNativeHandler maneja el registro de usuarios con email y contraseña.
 func (h *AuthHandler) RegisterNativeHandler(w http.ResponseWriter, r *http.Request) {
 	var req RegisterNativeRequest
@@ -121,7 +121,7 @@ func (h *AuthHandler) RegisterNativeHandler(w http.ResponseWriter, r *http.Reque
 // @Failure 401 {object} ErrorResponse "Email o contraseña inválidos."
 // @Failure 401 {object} LoginOAuthNeededResponse "Usuario registrado con Google, debe usar el inicio de sesión de Google."
 // @Failure 500 {object} ErrorResponse "No se pudo generar el token."
-// @Router /login [post]
+// @Router /api/v1/login [post]
 // LoginNativeHandler maneja el inicio de sesión con email y contraseña.
 func (h *AuthHandler) LoginNativeHandler(w http.ResponseWriter, r *http.Request) {
 	var req LoginNativeRequest
@@ -164,7 +164,7 @@ func (h *AuthHandler) LoginNativeHandler(w http.ResponseWriter, r *http.Request)
 // @Description Redirige al usuario a la página de consentimiento de Google OAuth2.
 // @Tags auth
 // @Success 307 "Redirige a Google OAuth"
-// @Router /auth/google/login [get]
+// @Router /api/v1/auth/google/login [get]
 // GoogleLoginHandler redirige al usuario a la página de consentimiento de Google.
 func (h *AuthHandler) GoogleLoginHandler(w http.ResponseWriter, r *http.Request) {
 	url := auth.GetGoogleLoginURL()
@@ -181,7 +181,7 @@ func (h *AuthHandler) GoogleLoginHandler(w http.ResponseWriter, r *http.Request)
 // @Failure 400 {object} ErrorResponse "Código no encontrado en el callback."
 // @Failure 409 {object} GoogleLinkAccountNeededResponse "La cuenta ya existe, necesita vinculación."
 // @Failure 500 {object} ErrorResponse "Fallo al obtener información del usuario de Google o al crear/generar token."
-// @Router /auth/google/callback [get]
+// @Router /api/v1/auth/google/callback [get]
 // GoogleCallbackHandler maneja el callback de Google.
 func (h *AuthHandler) GoogleCallbackHandler(w http.ResponseWriter, r *http.Request) {
 	code := r.URL.Query().Get("code")
@@ -243,7 +243,7 @@ func (h *AuthHandler) GoogleCallbackHandler(w http.ResponseWriter, r *http.Reque
 // @Failure 401 {object} ErrorResponse "Contraseña inválida."
 // @Failure 404 {object} ErrorResponse "Usuario no encontrado."
 // @Failure 500 {object} ErrorResponse "Fallo al verificar con Google o al vincular la cuenta."
-// @Router /auth/google/link [post]
+// @Router /api/v1/auth/google/link [post]
 // LinkGoogleAccountHandler vincula una cuenta de Google a una existente, verificando la contraseña.
 func (h *AuthHandler) LinkGoogleAccountHandler(w http.ResponseWriter, r *http.Request) {
     var req LinkGoogleAccountRequest
@@ -290,7 +290,7 @@ func (h *AuthHandler) LinkGoogleAccountHandler(w http.ResponseWriter, r *http.Re
 // @Security BearerAuth
 // @Success 200 {object} ProtectedResponse "Acceso concedido."
 // @Failure 401 {object} ErrorResponse "No autorizado."
-// @Router /api/profile [get]
+// @Router /api/v1/profile [get]
 // ProtectedHandler es un ejemplo de una ruta protegida.
 func (h *AuthHandler) ProtectedHandler(w http.ResponseWriter, r *http.Request) {
 	userID := r.Context().Value(UserIDKey).(string)

@@ -82,9 +82,28 @@ func main() {
     r.PathPrefix("/swagger").Handler(httpSwagger.WrapHandler)
 
 
+	// Envolver el mux con el middleware de CORS.
+	handler := corsMiddleware(r)
+
 	// Iniciar el servidor
 	log.Printf("Starting server on port %s", cfg.Port)
-	if err := http.ListenAndServe(":"+cfg.Port, r); err != nil {
+	if err := http.ListenAndServe(":"+cfg.Port, handler); err != nil {
 		log.Fatalf("Could not start server: %v", err)
 	}
+}
+
+// corsMiddleware agrega encabezados CORS a las respuestas.
+func corsMiddleware(next http.Handler) http.Handler {
+    return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+        // Permitimos todos los orígenes. Puedes limitarlo a dominios específicos.
+        w.Header().Set("Access-Control-Allow-Origin", "*")
+        w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+        w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+        // Responder a solicitudes preflight
+        if r.Method == "OPTIONS" {
+            w.WriteHeader(http.StatusOK)
+            return
+        }
+        next.ServeHTTP(w, r)
+    })
 }

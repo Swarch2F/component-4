@@ -100,26 +100,7 @@ info:
   title: API de autenticación híbrida
   version: "1.1"
 paths:
-  /api/profile:
-    get:
-      description: Ejemplo de una ruta que requiere autenticación JWT.
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Acceso concedido.
-          schema:
-            $ref: '#/definitions/handlers.ProtectedResponse'
-        "401":
-          description: No autorizado.
-          schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: Acceder a una ruta protegida
-      tags:
-      - protected
-  /auth/google/callback:
+  /api/v1/auth/google/callback:
     get:
       description: Procesa el callback de Google después de la autenticación del usuario.
         Crea un nuevo usuario o inicia sesión en un usuario existente, devolviendo
@@ -153,7 +134,7 @@ paths:
       summary: Manejar el callback de Google OAuth2
       tags:
       - auth
-  /auth/google/link:
+  /api/v1/auth/google/link:
     post:
       consumes:
       - application/json
@@ -192,7 +173,7 @@ paths:
       summary: Vincular una cuenta de Google a una cuenta nativa existente
       tags:
       - auth
-  /auth/google/login:
+  /api/v1/auth/google/login:
     get:
       description: Redirige al usuario a la página de consentimiento de Google OAuth2.
       responses:
@@ -201,7 +182,7 @@ paths:
       summary: Iniciar sesión con Google OAuth2
       tags:
       - auth
-  /login:
+  /api/v1/login:
     post:
       consumes:
       - application/json
@@ -237,7 +218,26 @@ paths:
       summary: Iniciar sesión de un usuario con email y contraseña
       tags:
       - auth
-  /register:
+  /api/v1/profile:
+    get:
+      description: Ejemplo de una ruta que requiere autenticación JWT.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Acceso concedido.
+          schema:
+            $ref: '#/definitions/handlers.ProtectedResponse'
+        "401":
+          description: No autorizado.
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Acceder a una ruta protegida
+      tags:
+      - protected
+  /api/v1/register:
     post:
       consumes:
       - application/json

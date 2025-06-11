@@ -24,38 +24,7 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
-        "/api/profile": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Ejemplo de una ruta que requiere autenticación JWT.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "protected"
-                ],
-                "summary": "Acceder a una ruta protegida",
-                "responses": {
-                    "200": {
-                        "description": "Acceso concedido.",
-                        "schema": {
-                            "$ref": "#/definitions/handlers.ProtectedResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "No autorizado.",
-                        "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/auth/google/callback": {
+        "/api/v1/auth/google/callback": {
             "get": {
                 "description": "Procesa el callback de Google después de la autenticación del usuario. Crea un nuevo usuario o inicia sesión en un usuario existente, devolviendo un token JWT.",
                 "produces": [
@@ -102,7 +71,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/auth/google/link": {
+        "/api/v1/auth/google/link": {
             "post": {
                 "description": "Verifica la contraseña del usuario y vincula su cuenta de Google usando un código de autorización de Google.",
                 "consumes": [
@@ -160,7 +129,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/auth/google/login": {
+        "/api/v1/auth/google/login": {
             "get": {
                 "description": "Redirige al usuario a la página de consentimiento de Google OAuth2.",
                 "tags": [
@@ -174,7 +143,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/login": {
+        "/api/v1/login": {
             "post": {
                 "description": "Autentica a un usuario y devuelve un token JWT si el inicio de sesión es exitoso.",
                 "consumes": [
@@ -226,7 +195,38 @@ const docTemplate = `{
                 }
             }
         },
-        "/register": {
+        "/api/v1/profile": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Ejemplo de una ruta que requiere autenticación JWT.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "protected"
+                ],
+                "summary": "Acceder a una ruta protegida",
+                "responses": {
+                    "200": {
+                        "description": "Acceso concedido.",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ProtectedResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "No autorizado.",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/register": {
             "post": {
                 "description": "Crea una nueva cuenta de usuario utilizando su email y una contraseña elegida.",
                 "consumes": [

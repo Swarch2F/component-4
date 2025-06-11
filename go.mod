@@ -13,6 +13,9 @@ require (
 	github.com/swaggo/swag v1.16.4
 	golang.org/x/crypto v0.39.0
 	golang.org/x/oauth2 v0.20.0
+)
+
+require (
 	cloud.google.com/go/compute/metadata v0.3.0 // indirect
 	github.com/KyleBanks/depth v1.2.1 // indirect
 	github.com/go-openapi/jsonpointer v0.21.1 // indirect

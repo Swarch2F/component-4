@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Frontend de Autenticación</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 2rem; }
+        section { margin-bottom: 2rem; padding: 1rem; border: 1px solid #ccc; }
+        label { display: block; margin-top: 0.5rem; }
+        input { margin-bottom: 0.5rem; }
+    </style>
+</head>
+<body>
+    <h1>Frontend de Autenticación</h1>
+    
+    <!-- Registro -->
+    <section id="register">
+        <h2>Registro</h2>
+        <form id="registerForm">
+            <label>Email:
+                <input type="email" name="email" required>
+            </label>
+            <label>Password:
+                <input type="password" name="password" required>
+            </label>
+            <button type="submit">Registrarse</button>
+        </form>
+        <div id="registerResult"></div>
+    </section>
+
+    <!-- Login -->
+    <section id="login">
+        <h2>Login</h2>
+        <form id="loginForm">
+            <label>Email:
+                <input type="email" name="email" required>
+            </label>
+            <label>Password:
+                <input type="password" name="password" required>
+            </label>
+            <button type="submit">Iniciar Sesión</button>
+        </form>
+        <div id="loginResult"></div>
+    </section>
+
+    <!-- Google OAuth -->
+    <section id="google">
+        <h2>Google OAuth</h2>
+        <button id="googleLogin">Iniciar sesión con Google</button>
+    </section>
+
+    <!-- Vinculación de cuenta Google -->
+    <section id="linkGoogle">
+        <h2>Vincular Cuenta de Google</h2>
+        <form id="linkGoogleForm">
+            <label>Email:
+                <input type="email" name="email" required>
+            </label>
+            <label>Password:
+                <input type="password" name="password" required>
+            </label>
+            <label>Google Auth Code:
+                <input type="text" name="google_auth_code" required>
+            </label>
+            <button type="submit">Vincular Cuenta</button>
+        </form>
+        <div id="linkGoogleResult"></div>
+    </section>
+
+    <script>
+        // Base URL de la API
+        const API_BASE = 'http://localhost:8080/api/v1';
+
+        // Registro
+        document.getElementById('registerForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const data = {
+                email: formData.get('email'),
+                password: formData.get('password')
+            };
+
+            const response = await fetch(`${API_BASE}/register`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            const result = await response.json();
+            document.getElementById('registerResult').innerText = JSON.stringify(result);
+        });
+
+        // Login
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const data = {
+                email: formData.get('email'),
+                password: formData.get('password')
+            };
+
+            const response = await fetch(`${API_BASE}/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            const result = await response.json();
+            document.getElementById('loginResult').innerText = JSON.stringify(result);
+        });
+
+        // Iniciar sesión con Google
+        document.getElementById('googleLogin').addEventListener('click', () => {
+            // Redirige al endpoint de Google Login
+            window.location.href = `${API_BASE}/auth/google/login`;
+        });
+
+        // Vinculación de cuenta Google
+        document.getElementById('linkGoogleForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const data = {
+                email: formData.get('email'),
+                password: formData.get('password'),
+                google_auth_code: formData.get('google_auth_code')
+            };
+
+            const response = await fetch(`${API_BASE}/auth/google/link`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            const result = await response.json();
+            document.getElementById('linkGoogleResult').innerText = JSON.stringify(result);
+        });
+    </script>
+</body>
+</html>
