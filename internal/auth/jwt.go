@@ -4,16 +4,19 @@ package auth
 import (
 	"fmt"
     "time"
-    "github.com/golang-jwt/jwt"
+    "github.com/golang-jwt/jwt/v5"
     "github.com/google/uuid"
+    "component-4/internal/models"
 )
+
+const TokenExpirySeconds = 24 * 60 * 60 // 24 horas en segundos
 
 type Claims struct {
     UserID uuid.UUID `json:"sub"`
     Email  string    `json:"email"`
     Name   string    `json:"name"`
     Role   string    `json:"role"`
-    jwt.StandardClaims
+    jwt.RegisteredClaims
 }
 
 func GenerateToken(user *models.User, secret string) (string, error) {
@@ -22,9 +25,9 @@ func GenerateToken(user *models.User, secret string) (string, error) {
         Email:  user.Email,
         Name:   user.Name,
         Role:   string(user.Role),
-        StandardClaims: jwt.StandardClaims{
-            ExpiresAt: time.Now().Add(24 * time.Hour).Unix(),
-            IssuedAt:  time.Now().Unix(),
+        RegisteredClaims: jwt.RegisteredClaims{
+            ExpiresAt: jwt.NewNumericDate(time.Now().Add(TokenExpirySeconds * time.Second)),
+            IssuedAt:  jwt.NewNumericDate(time.Now()),
         },
     }
 
@@ -32,9 +35,9 @@ func GenerateToken(user *models.User, secret string) (string, error) {
     return token.SignedString([]byte(secret))
 }
 
-// ValidateToken analiza un token y devuelve el ID del usuario si es válido.
-func ValidateToken(tokenString, jwtSecret string) (string, error) {
-	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+// ValidateToken analiza un token y devuelve el objeto *auth.Claims completo en lugar de solo el UserID.
+func ValidateToken(tokenString, jwtSecret string) (*Claims, error) {
+	token, err := jwt.ParseWithClaims(tokenString, &Claims{}, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}
@@ -42,13 +45,12 @@ func ValidateToken(tokenString, jwtSecret string) (string, error) {
 	})
 
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
-		userID := claims["sub"].(string)
-		return userID, nil
+	if claims, ok := token.Claims.(*Claims); ok && token.Valid {
+		return claims, nil
 	}
 
-	return "", fmt.Errorf("invalid token")
+	return nil, fmt.Errorf("invalid token")
 }

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"database/sql"
 	"log"
 	"net/http"
 
@@ -8,7 +9,9 @@ import (
 	"component-4/internal/auth"
 	"component-4/internal/handlers"
 	"component-4/internal/store"
+	"component-4/internal/models"
 	"github.com/gorilla/mux"
+	_ "github.com/lib/pq"
 	// Import generated docs
 	_ "component-4/docs" // Make sure this path is correct based on your go.mod module name
 	httpSwagger "github.com/swaggo/http-swagger"
@@ -54,33 +57,61 @@ func main() {
 	// Inicializar la configuración de OAuth de Google
 	auth.ConfigureGoogleOauth(cfg)
 
-	// Inicializar el almacén de usuarios (simulación de DB)
-	userStore := store.NewUserStore()
+	// Inicializar la conexión a la base de datos
+	db, err := sql.Open("postgres", cfg.DatabaseURL)
+	if err != nil {
+		log.Fatalf("Error al conectar con la base de datos: %v", err)
+	}
+	defer db.Close()
+
+	// Inicializar el almacén de usuarios
+	userStore := store.NewUserStore(db)
+
+	// Crear usuario administrador si no existe
+	_, err = userStore.FindByEmail("rector@colegio.edu")
+	if err != nil {
+		if err.Error() == "user not found" {
+			_, err = userStore.CreateNativeUser(
+				"rector@gmail.com",
+				"Rector del Colegio Luis Alberto",
+				"rector123",
+				models.ROLE_ADMINISTRADOR,
+			)
+			if err != nil {
+				log.Printf("Error al crear usuario administrador: %v", err)
+			} else {
+				log.Println("Usuario administrador creado exitosamente")
+			}
+		} else {
+			log.Printf("Error al buscar usuario administrador: %v", err)
+		}
+	}
 
 	// Inicializar los manejadores de autenticación
 	authHandler := handlers.NewAuthHandler(userStore, cfg)
 
-    // Crear el router principal
-    r := mux.NewRouter()
+	// Crear el router principal
+	r := mux.NewRouter()
 
-    // Subrouter para la API versionada
-    api := r.PathPrefix("/api/v1").Subrouter()
+	// Subrouter para la API versionada
+	api := r.PathPrefix("/api/v1").Subrouter()
 
-    // Rutas de autenticación
-    api.HandleFunc("/register", authHandler.RegisterNativeHandler).Methods("POST")
-    api.HandleFunc("/login", authHandler.LoginNativeHandler).Methods("POST")
-    api.HandleFunc("/auth/google/login", authHandler.GoogleLoginHandler).Methods("GET")
-    api.HandleFunc("/auth/google/callback", authHandler.GoogleCallbackHandler).Methods("GET")
-    api.HandleFunc("/auth/google/link", authHandler.LinkGoogleAccountHandler).Methods("POST")
+	// Rutas de autenticación
+	api.HandleFunc("/register", authHandler.RegisterNativeHandler).Methods("POST")
+	api.HandleFunc("/login", authHandler.LoginNativeHandler).Methods("POST")
+	api.HandleFunc("/auth/google/login", authHandler.GoogleLoginHandler).Methods("GET")
+	api.HandleFunc("/auth/google/callback", authHandler.GoogleCallbackHandler).Methods("GET")
+	api.HandleFunc("/auth/google/link", authHandler.LinkGoogleAccountHandler).Methods("POST")
+	api.HandleFunc("/auth-status", authHandler.AuthStatusHandler).Methods("GET")
+	api.HandleFunc("/logout", authHandler.LogoutHandler).Methods("POST")
 
-    // Rutas protegidas
-    protected := api.PathPrefix("/profile").Subrouter()
-    protected.Use(handlers.AuthMiddleware(cfg.JWTSecret))
-    protected.HandleFunc("", authHandler.ProtectedHandler).Methods("GET")
+	// Rutas protegidas
+	protected := api.PathPrefix("/profile").Subrouter()
+	protected.Use(handlers.AuthMiddleware(cfg.JWTSecret))
+	protected.HandleFunc("", authHandler.ProtectedHandler).Methods("GET")
 
-    // Swagger endpoint (fuera de /api)
-    r.PathPrefix("/swagger").Handler(httpSwagger.WrapHandler)
-
+	// Swagger endpoint (fuera de /api)
+	r.PathPrefix("/swagger").Handler(httpSwagger.WrapHandler)
 
 	// Envolver el mux con el middleware de CORS.
 	handler := corsMiddleware(r)
@@ -94,16 +125,19 @@ func main() {
 
 // corsMiddleware agrega encabezados CORS a las respuestas.
 func corsMiddleware(next http.Handler) http.Handler {
-    return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-        // Permitimos todos los orígenes. Puedes limitarlo a dominios específicos.
-        w.Header().Set("Access-Control-Allow-Origin", "*")
-        w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-        w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
-        // Responder a solicitudes preflight
-        if r.Method == "OPTIONS" {
-            w.WriteHeader(http.StatusOK)
-            return
-        }
-        next.ServeHTTP(w, r)
-    })
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Permitimos todos los orígenes. Puedes limitarlo a dominios específicos.
+		w.Header().Set("Access-Control-Allow-Origin", r.Header.Get("Origin"))
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+		w.Header().Set("Access-Control-Allow-Credentials", "true")
+		w.Header().Set("Access-Control-Max-Age", "3600")
+		
+		// Responder a solicitudes preflight
+		if r.Method == "OPTIONS" {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
 }

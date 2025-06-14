@@ -1,42 +1,51 @@
-# Binarios compilados
+# Archivos de entorno
+.env
+.env.*
+!.env.example
+
+# Archivos de Docker
+.docker/
+
+# Archivos de IDE
+.idea/
+.vscode/
+
+# Binarios y archivos compilados
+bin/
 *.exe
 *.exe~
 *.dll
 *.so
 *.dylib
 
+# Archivos de test
+*.test
+*.out
+
+# Archivos de cobertura
+coverage.txt
+
 # Nombre del ejecutable (si tienes uno específico, ajústalo)
-component-4
-app
-main
+# component-4
+# app
+# main
 
 # Directorio de salida de la compilación (si usas uno)
 /bin/
 /build/
 
-# Archivos de test
-*.test
-
 # Archivos de cobertura
 *.out
-coverage.txt
 profile.out
 
 # Archivos de dependencias (Go Modules maneja esto, pero por si acaso)
 /vendor/
-
-# Archivos de entorno - ¡IMPORTANTE para no subir secretos!
-.env
-.env.*
-!/.env.example # A menudo se versiona un ejemplo
 
 # Logs
 *.log
 logs/
 
 # Archivos de configuración de IDEs
-.idea/
-.vscode/
 *.iml
 *.ipr
 *.iws

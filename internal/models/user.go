@@ -9,18 +9,18 @@ import (
 type Role string
 
 const (
-    RoleAdmin      Role = "ADMIN"
-    RoleProfessor  Role = "PROFESSOR"
-    RoleStudent    Role = "STUDENT"
+    ROLE_ADMINISTRADOR Role = "administrador"
+    ROLE_PROFESOR     Role = "profesor"
+    ROLE_ESTUDIANTE   Role = "estudiante"
 )
 
 type User struct {
     ID        uuid.UUID `json:"id" gorm:"type:uuid;primary_key"`
     Email     string    `json:"email" gorm:"uniqueIndex"`
     Name      string    `json:"name"`
-    Password  string    `json:"-"`
+    Password  *string   `json:"-"`
     Role      Role      `json:"role"`
-    GoogleID  string    `json:"google_id,omitempty"`
+    GoogleID  *string   `json:"google_id,omitempty"`
     CreatedAt time.Time `json:"created_at"`
     UpdatedAt time.Time `json:"updated_at"`
 }

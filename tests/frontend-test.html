@@ -2,45 +2,156 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Frontend de Autenticación</title>
+    <title>Prueba de Autenticación</title>
     <style>
-        body { font-family: Arial, sans-serif; margin: 2rem; }
-        section { margin-bottom: 2rem; padding: 1rem; border: 1px solid #ccc; }
-        label { display: block; margin-top: 0.5rem; }
-        input { margin-bottom: 0.5rem; }
+        body { 
+            font-family: Arial, sans-serif; 
+            margin: 2rem;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        .container {
+            display: flex;
+            gap: 2rem;
+        }
+        section { 
+            flex: 1;
+            padding: 1.5rem;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            background: #f9f9f9;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 2rem;
+        }
+        h2 {
+            color: #444;
+            margin-top: 0;
+        }
+        label { 
+            display: block; 
+            margin: 1rem 0 0.5rem;
+            color: #555;
+        }
+        input { 
+            width: 100%;
+            padding: 0.5rem;
+            margin-bottom: 1rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        select {
+            width: 100%;
+            padding: 0.5rem;
+            margin-bottom: 1rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+            background-color: white;
+        }
+        button {
+            width: 100%;
+            padding: 0.8rem;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1rem;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .result {
+            margin-top: 1rem;
+            padding: 1rem;
+            border-radius: 4px;
+            display: none;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .token-display {
+            word-break: break-all;
+            font-family: monospace;
+            font-size: 0.9rem;
+            background: #f8f9fa;
+            padding: 0.5rem;
+            border-radius: 4px;
+            margin-top: 0.5rem;
+        }
+        .user-info {
+            margin-top: 1rem;
+            padding: 1rem;
+            background: #e9ecef;
+            border-radius: 4px;
+            font-family: monospace;
+        }
     </style>
 </head>
 <body>
-    <h1>Frontend de Autenticación</h1>
+    <h1>Prueba de Autenticación</h1>
     
-    <!-- Registro -->
-    <section id="register">
-        <h2>Registro</h2>
-        <form id="registerForm">
-            <label>Email:
-                <input type="email" name="email" required>
-            </label>
-            <label>Password:
-                <input type="password" name="password" required>
-            </label>
-            <button type="submit">Registrarse</button>
-        </form>
-        <div id="registerResult"></div>
-    </section>
+   
 
-    <!-- Login -->
-    <section id="login">
-        <h2>Login</h2>
-        <form id="loginForm">
-            <label>Email:
-                <input type="email" name="email" required>
-            </label>
-            <label>Password:
-                <input type="password" name="password" required>
-            </label>
-            <button type="submit">Iniciar Sesión</button>
-        </form>
-        <div id="loginResult"></div>
+    <div class="container">
+        <!-- Registro -->
+        <section id="register">
+            <h2>Registro</h2>
+            <form id="registerForm">
+                <label>Email:
+                    <input type="email" name="email" required>
+                </label>
+                <label>Nombre:
+                    <input type="text" name="name" required>
+                </label>
+                <label>Contraseña:
+                    <input type="password" name="password" required>
+                </label>
+                <label>Rol:
+                    <select name="role" required>
+                        <option value="ESTUDIANTE">Estudiante</option>
+                        <option value="PROFESOR">Profesor</option>
+                    </select>
+                </label>
+                <button type="submit">Registrar</button>
+            </form>
+            <div id="registerResult" class="result"></div>
+        </section>
+
+        <!-- Login -->
+        <section id="login">
+            <h2>Login</h2>
+            <form id="loginForm">
+                <label>Email:
+                    <input type="email" name="email" required>
+                </label>
+                <label>Contraseña:
+                    <input type="password" name="password" required>
+                </label>
+                <button type="submit">Iniciar Sesión</button>
+            </form>
+            <div id="loginResult" class="result"></div>
+        </section>
+    </div>
+
+     <!-- Estado de Autenticación -->
+     <section id="authStatus">
+        <h2>Estado de Autenticación</h2>
+        <button id="checkAuthStatus">Obtener Estado de Autenticación</button>
+        <div id="authStatusResult" class="result"></div>
+        <div id="userInfo" class="user-info" style="display: none;"></div>
     </section>
 
     <!-- Google OAuth -->
@@ -68,8 +179,45 @@
     </section>
 
     <script>
-        // Base URL de la API
         const API_BASE = 'http://localhost:8080/api/v1';
+
+        // Configuración global para incluir cookies en todas las peticiones
+        const fetchConfig = {
+            credentials: 'include'
+        };
+
+        function showResult(elementId, message, isError = false) {
+            const element = document.getElementById(elementId);
+            element.textContent = message;
+            element.style.display = 'block';
+            element.className = `result ${isError ? 'error' : 'success'}`;
+        }
+
+        // Verificar estado de autenticación
+        document.getElementById('checkAuthStatus').addEventListener('click', async () => {
+            try {
+                const response = await fetch(`${API_BASE}/auth-status`, {
+                    ...fetchConfig,
+                    method: 'GET'
+                });
+                const result = await response.json();
+                
+                const userInfoDiv = document.getElementById('userInfo');
+                if (response.ok) {
+                    userInfoDiv.innerHTML = `
+                        <h3>Información del Usuario:</h3>
+                        <pre>${JSON.stringify(result, null, 2)}</pre>
+                    `;
+                    userInfoDiv.style.display = 'block';
+                    showResult('authStatusResult', 'Estado de autenticación obtenido exitosamente');
+                } else {
+                    showResult('authStatusResult', `Error: ${result.error}`, true);
+                    userInfoDiv.style.display = 'none';
+                }
+            } catch (error) {
+                showResult('authStatusResult', 'Error de conexión', true);
+            }
+        });
 
         // Registro
         document.getElementById('registerForm').addEventListener('submit', async (e) => {
@@ -77,16 +225,29 @@
             const formData = new FormData(e.target);
             const data = {
                 email: formData.get('email'),
-                password: formData.get('password')
+                name: formData.get('name'),
+                password: formData.get('password'),
+                role: formData.get('role')
             };
 
-            const response = await fetch(`${API_BASE}/register`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
-            });
-            const result = await response.json();
-            document.getElementById('registerResult').innerText = JSON.stringify(result);
+            try {
+                const response = await fetch(`${API_BASE}/register`, {
+                    ...fetchConfig,
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                const result = await response.json();
+                
+                if (response.ok) {
+                    showResult('registerResult', '¡Registro exitoso! Ahora puedes iniciar sesión.');
+                    e.target.reset();
+                } else {
+                    showResult('registerResult', `Error: ${result.error}`, true);
+                }
+            } catch (error) {
+                showResult('registerResult', 'Error de conexión', true);
+            }
         });
 
         // Login
@@ -98,18 +259,33 @@
                 password: formData.get('password')
             };
 
-            const response = await fetch(`${API_BASE}/login`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
-            });
-            const result = await response.json();
-            document.getElementById('loginResult').innerText = JSON.stringify(result);
+            try {
+                const response = await fetch(`${API_BASE}/login`, {
+                    ...fetchConfig,
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                const result = await response.json();
+                
+                if (response.ok) {
+                    const resultDiv = document.getElementById('loginResult');
+                    resultDiv.innerHTML = `
+                        <div>¡Login exitoso! El token JWT ha sido establecido en una cookie HttpOnly.</div>
+                    `;
+                    resultDiv.className = 'result success';
+                    resultDiv.style.display = 'block';
+                    e.target.reset();
+                } else {
+                    showResult('loginResult', `Error: ${result.error}`, true);
+                }
+            } catch (error) {
+                showResult('loginResult', 'Error de conexión', true);
+            }
         });
 
         // Iniciar sesión con Google
         document.getElementById('googleLogin').addEventListener('click', () => {
-            // Redirige al endpoint de Google Login
             window.location.href = `${API_BASE}/auth/google/login`;
         });
 
@@ -123,13 +299,18 @@
                 google_auth_code: formData.get('google_auth_code')
             };
 
-            const response = await fetch(`${API_BASE}/auth/google/link`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
-            });
-            const result = await response.json();
-            document.getElementById('linkGoogleResult').innerText = JSON.stringify(result);
+            try {
+                const response = await fetch(`${API_BASE}/auth/google/link`, {
+                    ...fetchConfig,
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                const result = await response.json();
+                document.getElementById('linkGoogleResult').innerText = JSON.stringify(result);
+            } catch (error) {
+                showResult('linkGoogleResult', 'Error de conexión', true);
+            }
         });
     </script>
 </body>
