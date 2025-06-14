@@ -1,11 +1,26 @@
+// internal/models/user.go
 package models
 
-// User representa el modelo de usuario en el sistema.
-// Se usan punteros para PasswordHash y GoogleID para poder representar valores nulos,
-// lo que nos permite saber si un usuario tiene o no una contraseña o una cuenta de Google vinculada.
+import (
+    "time"
+    "github.com/google/uuid"
+)
+
+type Role string
+
+const (
+    RoleAdmin      Role = "ADMIN"
+    RoleProfessor  Role = "PROFESSOR"
+    RoleStudent    Role = "STUDENT"
+)
+
 type User struct {
-	ID           string  `json:"id"`
-	Email        string  `json:"email"`
-	PasswordHash *string `json:"-"` // Puntero para que pueda ser nulo
-	GoogleID     *string `json:"-"` // Puntero para que pueda ser nulo
+    ID        uuid.UUID `json:"id" gorm:"type:uuid;primary_key"`
+    Email     string    `json:"email" gorm:"uniqueIndex"`
+    Name      string    `json:"name"`
+    Password  string    `json:"-"`
+    Role      Role      `json:"role"`
+    GoogleID  string    `json:"google_id,omitempty"`
+    CreatedAt time.Time `json:"created_at"`
+    UpdatedAt time.Time `json:"updated_at"`
 }

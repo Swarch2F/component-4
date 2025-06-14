@@ -1,23 +1,35 @@
 package auth
+// internal/auth/jwt.go
 
 import (
 	"fmt"
-	"time"
-
-	"github.com/golang-jwt/jwt/v5"
+    "time"
+    "github.com/golang-jwt/jwt"
+    "github.com/google/uuid"
 )
 
-// GenerateToken crea un nuevo token JWT para un usuario.
-func GenerateToken(userID, jwtSecret string) (string, error) {
-	claims := jwt.MapClaims{
-		"sub": userID, // "sub" (subject) es el ID del usuario
-		"exp": time.Now().Add(time.Hour * 72).Unix(),
-		"iat": time.Now().Unix(),
-	}
+type Claims struct {
+    UserID uuid.UUID `json:"sub"`
+    Email  string    `json:"email"`
+    Name   string    `json:"name"`
+    Role   string    `json:"role"`
+    jwt.StandardClaims
+}
 
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+func GenerateToken(user *models.User, secret string) (string, error) {
+    claims := &Claims{
+        UserID: user.ID,
+        Email:  user.Email,
+        Name:   user.Name,
+        Role:   string(user.Role),
+        StandardClaims: jwt.StandardClaims{
+            ExpiresAt: time.Now().Add(24 * time.Hour).Unix(),
+            IssuedAt:  time.Now().Unix(),
+        },
+    }
 
-	return token.SignedString([]byte(jwtSecret))
+    token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+    return token.SignedString([]byte(secret))
 }
 
 // ValidateToken analiza un token y devuelve el ID del usuario si es válido.
