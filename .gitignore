@@ -67,6 +67,6 @@ Desktop.ini
 
 # PostgreSQL (si tienes archivos locales que no deben ser versionados)
 # pg_dump files
-*.sql
+
 *.dump
 # pgAdmin session files or logs (si aplica)
