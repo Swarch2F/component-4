@@ -5,12 +5,12 @@ services:
     env_file:
       - .env
     ports:
-      - "8080:8080"
+      - "8082:8082"
     depends_on:
       db:
         condition: service_healthy
     environment:
-      - PORT=${PORT:-8080}
+      - PORT=${PORT:-8082}
       - JWT_SECRET=${JWT_SECRET:-mi-super-secreto-jwt-para-desarrollo-123456789}
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-tu-google-client-id-aqui}
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-tu-google-client-secret-aqui}

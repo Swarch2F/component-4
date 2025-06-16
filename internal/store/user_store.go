@@ -8,22 +8,37 @@ import (
 
     "github.com/google/uuid"
     "golang.org/x/crypto/bcrypt"
+    "component-4/config"
 )
 
 type UserStore struct {
     db *sql.DB
 }
 
-func NewUserStore(db *sql.DB) *UserStore {
+func NewUserStore(config *config.Config) (*UserStore, error) {
+    dsn := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=%s",
+        config.DBHost,
+        config.DBPort,
+        config.DBUser,
+        config.DBPassword,
+        config.DBName,
+        config.DBSSLMode,
+    )
+
+    db, err := sql.Open("postgres", dsn)
+    if err != nil {
+        return nil, fmt.Errorf("error connecting to database: %v", err)
+    }
+
     // Crear índices si no existen
-    _, err := db.Exec(`
+    _, err = db.Exec(`
         CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
         CREATE INDEX IF NOT EXISTS idx_users_google_id ON users(google_id);
     `)
     if err != nil {
         panic(fmt.Sprintf("Error creating indexes: %v", err))
     }
-    return &UserStore{db: db}
+    return &UserStore{db: db}, nil
 }
 
 func (s *UserStore) FindByEmail(email string) (*models.User, error) {

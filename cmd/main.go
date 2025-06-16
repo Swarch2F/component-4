@@ -64,14 +64,17 @@ func main() {
 	}
 	defer db.Close()
 
-	// Inicializar el almacén de usuarios
-	userStore := store.NewUserStore(db)
+	// Inicializar el store
+	store, err := store.NewUserStore(cfg)
+	if err != nil {
+		log.Fatalf("Error creating store: %v", err)
+	}
 
 	// Crear usuario administrador si no existe
-	_, err = userStore.FindByEmail("rector@colegio.edu")
+	_, err = store.FindByEmail("rector@colegio.edu")
 	if err != nil {
 		if err.Error() == "user not found" {
-			_, err = userStore.CreateNativeUser(
+			_, err = store.CreateNativeUser(
 				"rector@gmail.com",
 				"Rector del Colegio Luis Alberto",
 				"rector123",
@@ -88,56 +91,51 @@ func main() {
 	}
 
 	// Inicializar los manejadores de autenticación
-	authHandler := handlers.NewAuthHandler(userStore, cfg)
+	authHandler := handlers.NewAuthHandler(store, cfg)
 
 	// Crear el router principal
 	r := mux.NewRouter()
+
+	// Configurar CORS
+	r.Use(func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Access-Control-Allow-Origin", "http://localhost:3001")
+			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+			w.Header().Set("Access-Control-Expose-Headers", "Authorization")
+			
+			if r.Method == "OPTIONS" {
+				w.WriteHeader(http.StatusOK)
+				return
+			}
+			
+			next.ServeHTTP(w, r)
+		})
+	})
 
 	// Subrouter para la API versionada
 	api := r.PathPrefix("/api/v1").Subrouter()
 
 	// Rutas de autenticación
-	api.HandleFunc("/register", authHandler.RegisterNativeHandler).Methods("POST")
-	api.HandleFunc("/login", authHandler.LoginNativeHandler).Methods("POST")
-	api.HandleFunc("/auth/google/login", authHandler.GoogleLoginHandler).Methods("GET")
-	api.HandleFunc("/auth/google/callback", authHandler.GoogleCallbackHandler).Methods("GET")
-	api.HandleFunc("/auth/google/link", authHandler.LinkGoogleAccountHandler).Methods("POST")
-	api.HandleFunc("/auth-status", authHandler.AuthStatusHandler).Methods("GET")
-	api.HandleFunc("/logout", authHandler.LogoutHandler).Methods("POST")
+	api.HandleFunc("/register", authHandler.RegisterNativeHandler).Methods("POST", "OPTIONS")
+	api.HandleFunc("/login", authHandler.LoginNativeHandler).Methods("POST", "OPTIONS")
+	api.HandleFunc("/auth/google/login", authHandler.GoogleLoginHandler).Methods("GET", "OPTIONS")
+	api.HandleFunc("/auth/google/callback", authHandler.GoogleCallbackHandler).Methods("GET", "OPTIONS")
+	api.HandleFunc("/auth/google/link", authHandler.LinkGoogleAccountHandler).Methods("POST", "OPTIONS")
+	api.HandleFunc("/auth-status", authHandler.AuthStatusHandler).Methods("GET", "OPTIONS")
+	api.HandleFunc("/logout", authHandler.LogoutHandler).Methods("POST", "OPTIONS")
 
 	// Rutas protegidas
 	protected := api.PathPrefix("/profile").Subrouter()
 	protected.Use(handlers.AuthMiddleware(cfg.JWTSecret))
-	protected.HandleFunc("", authHandler.ProtectedHandler).Methods("GET")
+	protected.HandleFunc("", authHandler.ProtectedHandler).Methods("GET", "OPTIONS")
 
 	// Swagger endpoint (fuera de /api)
 	r.PathPrefix("/swagger").Handler(httpSwagger.WrapHandler)
 
-	// Envolver el mux con el middleware de CORS.
-	handler := corsMiddleware(r)
-
 	// Iniciar el servidor
 	log.Printf("Starting server on port %s", cfg.Port)
-	if err := http.ListenAndServe(":"+cfg.Port, handler); err != nil {
+	if err := http.ListenAndServe(":"+cfg.Port, r); err != nil {
 		log.Fatalf("Could not start server: %v", err)
 	}
-}
-
-// corsMiddleware agrega encabezados CORS a las respuestas.
-func corsMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Permitimos todos los orígenes. Puedes limitarlo a dominios específicos.
-		w.Header().Set("Access-Control-Allow-Origin", r.Header.Get("Origin"))
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
-		w.Header().Set("Access-Control-Allow-Credentials", "true")
-		w.Header().Set("Access-Control-Max-Age", "3600")
-		
-		// Responder a solicitudes preflight
-		if r.Method == "OPTIONS" {
-			w.WriteHeader(http.StatusOK)
-			return
-		}
-		next.ServeHTTP(w, r)
-	})
 }

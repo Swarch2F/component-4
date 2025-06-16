@@ -6,10 +6,10 @@ import (
 	"component-4/internal/store"
 	"component-4/internal/models"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"strings"
-	"time"
 )
 
 const UserIDKey = "user"
@@ -142,7 +142,7 @@ func (h *AuthHandler) RegisterNativeHandler(w http.ResponseWriter, r *http.Reque
 // @Accept  json
 // @Produce  json
 // @Param   body body LoginInput true "Inicio de Sesión de Usuario"
-// @Success 200 {object} MessageResponse "Inicio de sesión exitoso."
+// @Success 200 {object} TokenResponse "Inicio de sesión exitoso."
 // @Failure 400 {object} ErrorResponse "Payload de solicitud inválido."
 // @Failure 401 {object} ErrorResponse "Email o contraseña inválidos."
 // @Failure 401 {object} LoginOAuthNeededResponse "Usuario registrado con Google, debe usar el inicio de sesión de Google."
@@ -162,12 +162,9 @@ func (h *AuthHandler) LoginNativeHandler(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	// Escenario 2: Usuario registrado con Google intenta iniciar sesión con contraseña.
+	// Verificar que el usuario tenga contraseña
 	if user.Password == nil {
-		h.writeJSON(w, http.StatusUnauthorized, LoginOAuthNeededResponse{
-			Error:    "Te registraste usando Google. Por favor, inicia sesión con Google o crea una contraseña para tu cuenta.",
-			UseOAuth: "true",
-		})
+		h.writeJSON(w, http.StatusUnauthorized, ErrorResponse{Error: "Credenciales inválidas, falta la contraseña."})
 		return
 	}
 
@@ -182,18 +179,11 @@ func (h *AuthHandler) LoginNativeHandler(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	// Establecer el token JWT en una cookie HttpOnly
-	http.SetCookie(w, &http.Cookie{
-		Name:     "jwt_token",
-		Value:    token,
-		Path:     "/",
-		HttpOnly: false,    // Permitir acceso desde JavaScript en desarrollo
-		Secure:   false,   // No requerir HTTPS en desarrollo
-		SameSite: http.SameSiteLaxMode,
-		MaxAge:   int(auth.TokenExpirySeconds),
+	// Enviar el token en el header y en la respuesta JSON
+	w.Header().Set("Authorization", "Bearer "+token)
+	h.writeJSON(w, http.StatusOK, TokenResponse{
+		Token: token,
 	})
-
-	h.writeJSON(w, http.StatusOK, MessageResponse{Message: "Inicio de sesión exitoso."})
 }
 
 // GoogleLoginHandler godoc
@@ -221,69 +211,59 @@ func (h *AuthHandler) GoogleLoginHandler(w http.ResponseWriter, r *http.Request)
 // @Router /api/v1/auth/google/callback [get]
 // GoogleCallbackHandler maneja el callback de Google.
 func (h *AuthHandler) GoogleCallbackHandler(w http.ResponseWriter, r *http.Request) {
+	log.Printf("GoogleCallbackHandler: Iniciando callback de Google")
+	
+	// Obtener el código de autorización
 	code := r.URL.Query().Get("code")
 	if code == "" {
-		h.writeJSON(w, http.StatusBadRequest, ErrorResponse{Error: "Código no encontrado en el callback."})
+		log.Printf("GoogleCallbackHandler: No se recibió código de autorización")
+		http.Error(w, "No se recibió código de autorización", http.StatusBadRequest)
 		return
 	}
+	log.Printf("GoogleCallbackHandler: Código recibido: %s", code)
 
-	googleUserInfo, err := auth.GetGoogleUserInfo(code)
+	// Obtener información del usuario de Google
+	userInfo, err := auth.GetGoogleUserInfo(code)
 	if err != nil {
-		log.Printf("Error al obtener información del usuario de Google: %v", err)
-		h.writeJSON(w, http.StatusInternalServerError, ErrorResponse{Error: "Fallo al obtener información del usuario de Google."})
+		log.Printf("GoogleCallbackHandler: Error al obtener información del usuario: %v", err)
+		http.Error(w, "Error al obtener información del usuario", http.StatusInternalServerError)
 		return
 	}
+	log.Printf("GoogleCallbackHandler: Información del usuario obtenida: %+v", userInfo)
 
-	// Buscar si el usuario existe
-	user, err := h.Store.FindByEmail(googleUserInfo.Email)
-
-	if err != nil {
-		// Si el usuario no existe, se rechaza la solicitud (según el requisito del usuario)
-		if err.Error() == "user not found" {
-			h.writeJSON(w, http.StatusUnauthorized, ErrorResponse{
-				Error: "Credenciales inválidas, este correo no está vinculado a una cuenta nativa.",
-			})
-			return
-		}
-		// Si es otro tipo de error al buscar al usuario
-		log.Printf("Error al buscar usuario por email en GoogleCallback: %v", err)
-		h.writeJSON(w, http.StatusInternalServerError, ErrorResponse{Error: "Error interno al buscar usuario."})
-		return
-	}
-
-	// Si el usuario existe, usar UpsertGoogleUser para asegurar que el google_id esté vinculado
-	// y obtener el usuario actualizado para generar el token.
-	upsertedUser, err := h.Store.UpsertGoogleUser(
-		googleUserInfo.Email,
-		user.Name, // Usamos el nombre existente del usuario ya que GoogleUserInfo no proporciona 'Name' directamente
-		googleUserInfo.ID,
-		user.Role, // Usar el rol existente del usuario
+	// Buscar o crear el usuario en la base de datos
+	user, err := h.Store.UpsertGoogleUser(
+		userInfo.Email,
+		userInfo.Name,
+		userInfo.ID,
+		models.ROLE_ESTUDIANTE, // Rol por defecto
 	)
 	if err != nil {
-		log.Printf("Error al procesar usuario de Google (UpsertGoogleUser): %v", err)
-		h.writeJSON(w, http.StatusInternalServerError, ErrorResponse{Error: "Fallo al procesar el usuario de Google (vincular/actualizar)."})
+		log.Printf("GoogleCallbackHandler: Error al buscar/crear usuario: %v", err)
+		http.Error(w, "Error al procesar usuario", http.StatusInternalServerError)
 		return
 	}
+	log.Printf("GoogleCallbackHandler: Usuario encontrado/creado: %+v", user)
 
-	token, err := auth.GenerateToken(upsertedUser, h.Config.JWTSecret)
+	// Generar token JWT
+	jwtToken, err := auth.GenerateToken(user, h.Config.JWTSecret)
 	if err != nil {
-		log.Printf("Error al generar el token JWT en GoogleCallback: %v", err)
-		h.writeJSON(w, http.StatusInternalServerError, ErrorResponse{Error: "No se pudo generar el token."})
+		log.Printf("GoogleCallbackHandler: Error al generar token JWT: %v", err)
+		http.Error(w, "Error al generar token", http.StatusInternalServerError)
 		return
 	}
+	log.Printf("GoogleCallbackHandler: Token JWT generado: %s", jwtToken)
 
-	// Establecer el token JWT en una cookie HttpOnly
-	http.SetCookie(w, &http.Cookie{
-		Name:     "jwt_token",
-		Value:    token,
-		Path:     "/",
-		HttpOnly: false,    // Permitir acceso desde JavaScript en desarrollo
-		Secure:   false,   // No requerir HTTPS en desarrollo
-		SameSite: http.SameSiteLaxMode,
-		MaxAge:   int(auth.TokenExpirySeconds),
-	})
-
-	h.writeJSON(w, http.StatusOK, MessageResponse{Message: "Inicio de sesión exitoso con Google."})
+	// Redirigir al frontend con el token como parámetro de URL
+	frontendURL := fmt.Sprintf("%s/auth/callback?token=%s", h.Config.FrontendURL, jwtToken)
+	log.Printf("GoogleCallbackHandler: URL de redirección completa: %s", frontendURL)
+	
+	// Establecer headers para evitar caché
+	w.Header().Set("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
+	w.Header().Set("Pragma", "no-cache")
+	w.Header().Set("Expires", "0")
+	
+	http.Redirect(w, r, frontendURL, http.StatusTemporaryRedirect)
 }
 
 // LinkGoogleAccountHandler godoc
@@ -355,24 +335,13 @@ func (h *AuthHandler) ProtectedHandler(w http.ResponseWriter, r *http.Request) {
 
 // LogoutHandler godoc
 // @Summary Cerrar sesión del usuario
-// @Description Elimina el token JWT de las cookies del navegador, cerrando la sesión del usuario.
+// @Description Elimina el token JWT del cliente.
 // @Tags auth
 // @Produce json
 // @Success 200 {object} MessageResponse "Sesión cerrada exitosamente."
 // @Router /api/v1/logout [post]
 func (h *AuthHandler) LogoutHandler(w http.ResponseWriter, r *http.Request) {
-	// Eliminar la cookie estableciendo su expiración en el pasado
-	http.SetCookie(w, &http.Cookie{
-		Name:     "jwt_token",
-		Value:    "",
-		Path:     "/",
-		HttpOnly: false, // Debe coincidir con la configuración al establecer la cookie
-		Secure:   false, // Debe coincidir con la configuración al establecer la cookie
-		Expires:  time.Unix(0, 0), // Fecha en el pasado
-		MaxAge:   -1,              // Eliminar inmediatamente
-		SameSite: http.SameSiteLaxMode,
-	})
-
+	// No es necesario hacer nada en el servidor ya que el cliente manejará el token
 	h.writeJSON(w, http.StatusOK, MessageResponse{Message: "Sesión cerrada exitosamente."})
 }
 
@@ -387,11 +356,11 @@ func (h *AuthHandler) LogoutHandler(w http.ResponseWriter, r *http.Request) {
 func (h *AuthHandler) AuthStatusHandler(w http.ResponseWriter, r *http.Request) {
 	log.Printf("AuthStatusHandler: Iniciando verificación de estado de autenticación")
 	
-	// Obtener el token de las cookies
-	cookie, err := r.Cookie("jwt_token")
-	if err != nil {
-		log.Printf("AuthStatusHandler: No se encontró cookie jwt_token: %v", err)
-		// Si no hay cookie, devolver usuario anónimo
+	// Obtener el token del header Authorization
+	authHeader := r.Header.Get("Authorization")
+	if authHeader == "" {
+		log.Printf("AuthStatusHandler: No se encontró header Authorization")
+		// Si no hay token, devolver usuario anónimo
 		h.writeJSON(w, http.StatusOK, AuthStatusResponse{
 			User: UserInfo{
 				ID:    "",
@@ -403,11 +372,28 @@ func (h *AuthHandler) AuthStatusHandler(w http.ResponseWriter, r *http.Request) 
 		})
 		return
 	}
-	log.Printf("AuthStatusHandler: Cookie jwt_token encontrada: %s", cookie.Value)
+
+	// Extraer el token del header
+	tokenString := strings.Replace(authHeader, "Bearer ", "", 1)
+	if tokenString == "" || tokenString == "undefined" {
+		log.Printf("AuthStatusHandler: Token vacío o undefined")
+		h.writeJSON(w, http.StatusOK, AuthStatusResponse{
+			User: UserInfo{
+				ID:    "",
+				Name:  "Anónimo",
+				Email: "",
+				Role:  "guest",
+			},
+			IsAuthenticated: false,
+		})
+		return
+	}
+
+	log.Printf("AuthStatusHandler: Token encontrado en header: %s", tokenString)
 
 	// Validar y desencriptar el token
 	log.Printf("AuthStatusHandler: Intentando validar token con secret: %s", h.Config.JWTSecret)
-	claims, err := auth.ValidateToken(cookie.Value, h.Config.JWTSecret)
+	claims, err := auth.ValidateToken(tokenString, h.Config.JWTSecret)
 	if err != nil {
 		log.Printf("AuthStatusHandler: Error al validar token: %v", err)
 		// Si el token no es válido, devolver usuario anónimo
@@ -427,7 +413,7 @@ func (h *AuthHandler) AuthStatusHandler(w http.ResponseWriter, r *http.Request) 
 	// Devolver información del usuario desde el token
 	response := AuthStatusResponse{
 		User: UserInfo{
-			ID:    claims.UserID.String(), // Convertir UUID a string
+			ID:    claims.UserID.String(),
 			Name:  claims.Name,
 			Email: claims.Email,
 			Role:  claims.Role,

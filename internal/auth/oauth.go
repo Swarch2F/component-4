@@ -15,6 +15,7 @@ import (
 type GoogleUserInfo struct {
 	ID    string `json:"id"`
 	Email string `json:"email"`
+	Name  string `json:"name"`
 }
 
 var googleOAuthConfig *oauth2.Config

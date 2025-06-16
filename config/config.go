@@ -21,6 +21,7 @@ type Config struct {
 	DBPassword     string // Contraseña de la base de datos
 	DBName         string // Nombre de la base de datos
 	DBSSLMode      string // Modo SSL de la base de datos
+	FrontendURL    string // URL del frontend para redirección
 }
 
 func buildDatabaseURL(cfg *Config) string {
@@ -31,6 +32,7 @@ func buildDatabaseURL(cfg *Config) string {
 		cfg.DBPort,
 		cfg.DBName,
 		cfg.DBSSLMode,
+		cfg.FrontendURL,
 	)
 }
 
@@ -51,6 +53,7 @@ func LoadConfig() *Config {
 		DBPassword:     os.Getenv("DB_PASSWORD"),
 		DBName:         os.Getenv("DB_NAME"),
 		DBSSLMode:      os.Getenv("DB_SSL_MODE"),
+		FrontendURL:    os.Getenv("FrontendURL"),
 	}
 
 	// Construir la URL de la base de datos
