@@ -10,17 +10,19 @@ services:
       db:
         condition: service_healthy
     environment:
-      - PORT=${PORT:-8082}
-      - JWT_SECRET=${JWT_SECRET:-mi-super-secreto-jwt-para-desarrollo-123456789}
-      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-tu-google-client-id-aqui}
-      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-tu-google-client-secret-aqui}
-      - GOOGLE_REDIRECT_URL=${GOOGLE_REDIRECT_URL:-http://localhost:8082/api/v1/auth/google/callback}
-      - DB_HOST=db
+      - PORT=8082
+      - JWT_SECRET="nbu8dTVEoJ/1pnIaOj+JM+Jrui/jLvtIKmXgGScb1ndzEfBb4GbqIz45gcMdRmb4ptfBNA1+/sCtttvpZPL8Vg"
+      - JWT_EXPIRATION=3600 # 1 hora
+      - GOOGLE_CLIENT_ID="97072811302-e0foheebjj6kto3k8efabljk2t453vbe.apps.googleusercontent.com"
+      - GOOGLE_CLIENT_SECRET="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"
+      - GOOGLE_REDIRECT_URL=http://localhost:3001/auth/callback
+      - DB_HOST=auth-db
       - DB_PORT=5432
       - DB_USER=authuser
       - DB_PASSWORD=authpass
       - DB_NAME=authdb
       - DB_SSL_MODE=disable
+      - FrontendURL=http://localhost:3001
 
   db:
     image: postgres:16
