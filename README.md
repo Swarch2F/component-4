@@ -1,6 +1,6 @@
-# Componente 4: Sistema de Autenticación Híbrida
+# Auth Híbrida en Go
 
-Este componente implementa un sistema de autenticación híbrida que permite a los usuarios iniciar sesión tanto con credenciales tradicionales (email/contraseña) como mediante OAuth con Google. El sistema maneja inteligentemente la vinculación de cuentas y la gestión de sesiones usando JWT.
+Este proyecto es una aplicación de autenticación híbrida en Go que permite a los usuarios iniciar sesión utilizando correo y contraseña, así como mediante OAuth con Google. Incluye lógica avanzada para vinculación de cuentas y flujos seguros, enfocándose en una excelente experiencia de usuario.
 
 ---
 
@@ -9,47 +9,44 @@ Este componente implementa un sistema de autenticación híbrida que permite a l
 ```
 component-4
 ├── cmd/
-│   ├── main.go                # Punto de entrada de la aplicación
-│   └── migrate/
-│       └── main.go            # Script de migración de base de datos
+│   └── main.go                # Punto de entrada de la aplicación
 ├── config/
-│   └── config.go              # Configuración y variables de entorno
+│   └── config.go              # Manejo de configuración y variables de entorno
+├── docs/
+│   ├── docs.go                # Inicialización de documentación Swagger
+│   ├── swagger.json           # Documentación de la API en formato JSON
+│   └── swagger.yaml           # Documentación de la API en formato YAML
 ├── internal/
 │   ├── auth/
-│   │   ├── email.go           # Autenticación por email/contraseña
-│   │   ├── jwt.go             # Gestión de JWT
-│   │   └── oauth.go           # Integración con Google OAuth
+│   │   ├── email.go           # Lógica de autenticación por correo y contraseña
+│   │   ├── jwt.go             # Generación y validación de JWT
+│   │   └── oauth.go           # Lógica de autenticación OAuth con Google
 │   ├── handlers/
-│   │   ├── auth_handler.go    # Manejadores de rutas de autenticación
-│   │   └── middleware.go      # Middleware de autenticación
+│   │   ├── auth_handler.go    # Controladores para rutas de autenticación
+│   │   └── middleware.go      # Middleware para proteger rutas
 │   ├── models/
-│   │   └── user.go            # Modelo de usuario y roles
+│   │   └── user.go            # Modelo de usuario
 │   └── store/
-│       └── user_store.go      # Operaciones de base de datos
-├── migrations/                # Scripts SQL para la base de datos
-├── Dockerfile                 # Configuración de Docker
-├── docker-compose.yml         # Orquestación de servicios
-├── go.mod                     # Dependencias de Go
-└── go.sum                     # Checksums de dependencias
+│       └── user_store.go      # Acceso y gestión de usuarios en la base de datos o almacenamiento
+├── Dockerfile                 # Imagen Docker para la aplicación
+├── docker-compose.yml         # Orquestación de servicios (por ejemplo, base de datos)
+├── go.mod                     # Módulo de Go
+├── go.sum                     # Sumas de verificación de dependencias
+├── README.md                  # Documentación del proyecto
+└── README-original.md         # Versión previa del README
 ```
 
 ---
 
-## Características Principales
+## Funcionalidades Clave
 
-- **Autenticación Dual**: Soporte para login tradicional y Google OAuth
-- **Gestión Inteligente de Cuentas**: 
-  - Vinculación automática de cuentas Google con usuarios existentes
-  - Prevención de duplicación de cuentas
-  - Manejo de roles (Administrador, Profesor, Estudiante)
-- **Seguridad**:
-  - JWT en cabeceras HTTP (no cookies por SSR)
-  - Almacenamiento seguro en localStorage (frontend)
-  - Hashing de contraseñas con bcrypt
-- **Base de Datos**:
-  - PostgreSQL con migraciones automáticas
-  - Índices optimizados para búsquedas
-  - Transacciones para garantizar integridad
+- **Registro y Login Nativo**: Creación de cuentas y autenticación tradicional usando email y contraseña.
+- **Autenticación con Google**: Inicio de sesión y registro simplificado mediante una cuenta de Google.
+- **Vinculación de Cuentas**: Un usuario registrado con contraseña puede vincular su cuenta de Google para iniciar sesión con ambos métodos.
+- **Manejo Inteligente de Flujos**: El sistema identifica si un usuario se registró solo con Google y le impide iniciar sesión con contraseña (a menos que la cree).
+- **API Segura con JWT**: Las rutas protegidas utilizan JSON Web Tokens (JWT) para la autorización.
+- **Arquitectura Limpia**: El código está organizado por responsabilidades (configuración, handlers, modelos, store, auth).
+- **Documentación Swagger**: Documentación interactiva de la API disponible en la carpeta `docs/`.
 
 ---
 
@@ -63,74 +60,83 @@ component-4
 | GET    | `/api/v1/auth/google/callback`           | Endpoint al que Google redirige tras la autenticación. Maneja la creación/login y devuelve un JWT| No            |
 | POST   | `/api/v1/auth/google/link`               | Vincula una cuenta de Google a un usuario existente. Requiere `{"email": "...", "password": "...", "google_auth_code": "..."}` | Sí (JWT)      |
 | GET    | `/api/v1/profile`                        | Ruta protegida que requiere `Authorization: Bearer <token>` en la cabecera                       | Sí (JWT)      |
-
+| GET    | `/swagger`                               | Interfaz interactiva de documentación Swagger                                                    | No            |
 ---
 
-## Implementación de Autenticación
+## Documentación Interactiva (Swagger)
 
-### Flujo de Autenticación
+La API cuenta con documentación interactiva generada con Swagger. Puedes explorar y probar los endpoints directamente desde la interfaz web disponible en:
 
-1. **Login Tradicional**:
-   - Usuario envía email/contraseña
-   - Sistema verifica credenciales
-   - Genera JWT si son válidas
+[http://localhost:8080/swagger/](http://localhost:8080/swagger/)
 
-2. **Login con Google**:
-   - Usuario inicia flujo OAuth
-   - Si el email existe:
-     - Vincula cuenta Google si no está vinculada
-     - Genera JWT
-   - Si el email no existe:
-     - Crea nueva cuenta
-     - Genera JWT
-
-### Seguridad
-
-- JWT almacenados en localStorage (frontend)
-- Tokens en cabeceras HTTP (no cookies por SSR)
-- Validación de tokens en middleware
-- Protección contra duplicación de cuentas
-
----
-
-## Configuración
-
-1. Crea un archivo `.env`:
-
-    ```env
-    PORT=8080
-    GOOGLE_CLIENT_ID="tu_client_id"
-    GOOGLE_CLIENT_SECRET="tu_client_secret"
-    GOOGLE_REDIRECT_URL="http://localhost:8080/api/v1/auth/google/callback"
-    JWT_SECRET="tu_jwt_secret"
-    DB_HOST=localhost
-    DB_PORT=5432
-    DB_USER=authuser
-    DB_PASSWORD=authpass
-    DB_NAME=authdb
-    DB_SSL_MODE=disable
-    ```
-
-2. Ejecuta las migraciones:
-   ```bash
-   go run cmd/migrate/main.go
-   ```
-
-3. Inicia el servidor:
-   ```bash
-   go run cmd/main.go
-   ```
+La documentación se encuentra en la carpeta `docs/` y se actualiza automáticamente con los cambios en la API.
 
 ---
 
 ## Requisitos
 
-- Go 1.16+
-- PostgreSQL
-- Docker (opcional)
+- Go 1.16 o superior
+- Docker (opcional, para despliegue y pruebas)
+
+---
+
+## Configuración
+
+1. Crea un archivo `.env` en la raíz del proyecto.
+2. Añade las siguientes variables de entorno:
+
+    ```env
+    # Puerto de la aplicación
+    PORT=8080
+
+    # Credenciales de Google OAuth 2.0
+    GOOGLE_CLIENT_ID="TU_CLIENT_ID_DE_GOOGLE"
+    GOOGLE_CLIENT_SECRET="TU_CLIENT_SECRET_DE_GOOGLE"
+    GOOGLE_REDIRECT_URL="http://localhost:8080/auth/google/callback"
+
+    # Secreto para firmar los JWT (usa un valor largo y aleatorio)
+    JWT_SECRET="un-secreto-muy-largo-y-seguro-aqui"
+    ```
+
+---
+
+## Instalación y Ejecución
+
+1. Clona el repositorio:
+
+    ```bash
+    git clone <URL_DEL_REPOSITORIO>
+    cd component-4
+    ```
+
+2. Instala las dependencias:
+
+    ```bash
+    go mod tidy
+    ```
+
+3. Ejecuta la aplicación:
+
+    ```bash
+    go run ./cmd/main.go
+    ```
+
+   O bien, usando Docker:
+
+    ```bash
+    docker-compose up --build
+    ```
+
+La API estará disponible en `http://localhost:8080`.
+
+---
+
+## Contribuciones
+
+Las contribuciones son bienvenidas. Si deseas mejorar este proyecto, por favor abre un issue o un pull request.
 
 ---
 
 ## Licencia
 
-Este proyecto está bajo la Licencia MIT.
+Este proyecto está bajo la Licencia MIT. Consulta el archivo LICENSE para más detalles.
