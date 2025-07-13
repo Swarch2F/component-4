@@ -13,8 +13,8 @@ import (
 	"github.com/gorilla/mux"
 	_ "github.com/lib/pq"
 	// Import generated docs
-	_ "component-4/docs" // Make sure this path is correct based on your go.mod module name
-	httpSwagger "github.com/swaggo/http-swagger"
+	// _ "component-4/docs" // Make sure this path is correct based on your go.mod module name
+	// httpSwagger "github.com/swaggo/http-swagger"
 )
 
 // @title API de autenticación híbrida
@@ -124,14 +124,20 @@ func main() {
 	api.HandleFunc("/auth/google/link", authHandler.LinkGoogleAccountHandler).Methods("POST", "OPTIONS")
 	api.HandleFunc("/auth-status", authHandler.AuthStatusHandler).Methods("GET", "OPTIONS")
 	api.HandleFunc("/logout", authHandler.LogoutHandler).Methods("POST", "OPTIONS")
+	// Ruta simple de health check
+	api.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("Servidor funcionando correctamente!"))
+	}).Methods("GET")
 
 	// Rutas protegidas
 	protected := api.PathPrefix("/profile").Subrouter()
 	protected.Use(handlers.AuthMiddleware(cfg.JWTSecret))
 	protected.HandleFunc("", authHandler.ProtectedHandler).Methods("GET", "OPTIONS")
 
+
 	// Swagger endpoint (fuera de /api)
-	r.PathPrefix("/swagger").Handler(httpSwagger.WrapHandler)
+	// r.PathPrefix("/swagger").Handler(httpSwagger.WrapHandler)
 
 	// Iniciar el servidor
 	log.Printf("Starting server on port %s", cfg.Port)

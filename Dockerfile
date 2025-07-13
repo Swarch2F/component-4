@@ -13,8 +13,8 @@ RUN go mod download
 COPY . .
 
 # Genera la documentación de Swagger (si usas herramientas como swagger)
-RUN go install github.com/swaggo/swag/cmd/swag@latest
-RUN swag init --parseDependency --parseInternal -g cmd/main.go
+# RUN go install github.com/swaggo/swag/cmd/swag@latest
+# RUN swag init --parseDependency --parseInternal -g cmd/main.go
 
 # Compila el binario
 RUN go build -o component-4 ./cmd/main.go
@@ -28,7 +28,7 @@ WORKDIR /app
 COPY --from=builder /app/component-4 .
 
 # Copia los archivos de documentación de Swagger generados (si existen)
-COPY --from=builder /app/docs ./docs
+# COPY --from=builder /app/docs ./docs
 
 # Copia el .env si lo necesitas (opcional, solo para pruebas locales)
 # COPY .env .env
