@@ -15,6 +15,7 @@ import (
 	// Import generated docs
 	// _ "component-4/docs" // Make sure this path is correct based on your go.mod module name
 	// httpSwagger "github.com/swaggo/http-swagger"
+	"component-4/internal/migrate"
 )
 
 // @title API de autenticación híbrida
@@ -63,6 +64,12 @@ func main() {
 		log.Fatalf("Error al conectar con la base de datos: %v", err)
 	}
 	defer db.Close()
+
+	// Ejecutar migraciones antes de inicializar el store
+	err = migrate.RunMigrations(db, "./migrations")
+	if err != nil {
+		log.Fatalf("Error ejecutando migraciones: %v", err)
+	}
 
 	// Inicializar el store
 	store, err := store.NewUserStore(cfg)

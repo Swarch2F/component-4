@@ -27,6 +27,9 @@ WORKDIR /app
 # Copia el binario desde la etapa anterior
 COPY --from=builder /app/component-4 .
 
+# COPIA LA CARPETA DE MIGRACIONES
+COPY --from=builder /app/migrations ./migrations
+
 # Copia los archivos de documentación de Swagger generados (si existen)
 # COPY --from=builder /app/docs ./docs
 
