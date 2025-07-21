@@ -425,3 +425,15 @@ func (h *AuthHandler) AuthStatusHandler(w http.ResponseWriter, r *http.Request) 
 	h.writeJSON(w, http.StatusOK, response)
 }
 
+// Handler para verificar si un correo ya existe
+func (h *AuthHandler) UserExists(w http.ResponseWriter, r *http.Request) {
+	email := r.URL.Query().Get("email")
+	if email == "" {
+		h.writeJSON(w, http.StatusBadRequest, ErrorResponse{Error: "email required"})
+		return
+	}
+	user, err := h.Store.FindByEmail(email)
+	exists := err == nil && user != nil
+	h.writeJSON(w, http.StatusOK, map[string]bool{"exists": exists})
+}
+

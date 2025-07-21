@@ -131,6 +131,8 @@ func main() {
 	api.HandleFunc("/auth/google/link", authHandler.LinkGoogleAccountHandler).Methods("POST", "OPTIONS")
 	api.HandleFunc("/auth-status", authHandler.AuthStatusHandler).Methods("GET", "OPTIONS")
 	api.HandleFunc("/logout", authHandler.LogoutHandler).Methods("POST", "OPTIONS")
+	// Nueva ruta para verificar si un correo existe
+	api.HandleFunc("/users/exists", authHandler.UserExists).Methods("GET", "OPTIONS")
 	// Ruta simple de health check
 	api.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)

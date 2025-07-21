@@ -9,6 +9,18 @@
 # Archivos de IDE
 .idea/
 .vscode/
+# Ignorar la carpeta node_modules y sus subcarpetas
+node_modules/
+# Ignorar archivos de lock de npm/yarn/pnpm
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+# Ignorar archivos de salida de compilación de TypeScript
+dist/
+build/
+# Ignorar archivos de tipado generados automáticamente
+*.d.ts
+
 
 # Binarios y archivos compilados
 bin/
